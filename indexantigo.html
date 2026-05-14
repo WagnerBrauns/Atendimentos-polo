@@ -454,39 +454,11 @@ const STATUS = {
   resolvido:          { label: 'Resolvido',          color: '#10b981', bg: '#ecfdf5' },
 };
 
-const API = 'https://script.google.com/macros/s/AKfycbwmBGpjQiUBsl_chgBsY5XUmJVsDeC1q-BuVV5RJqO1AB0WULtXu5LDKMCVb81Bnej-/exec';
-
-let dados = [];
+let dados = JSON.parse(localStorage.getItem('task_atendimentos') || '[]');
 let expandido = null;
-let carregando = false;
 
-async function carregarDados() {
-  carregando = true;
-  document.getElementById('list').innerHTML = `<div class="empty">Carregando atendimentos...</div>`;
-  try {
-    const res = await fetch(`${API}?action=getAll`);
-    const json = await res.json();
-    dados = json.data || [];
-    render();
-  } catch(e) {
-    document.getElementById('list').innerHTML = `<div class="empty">Erro ao carregar. Verifique sua conexão.</div>`;
-  }
-  carregando = false;
-}
-
-async function save(atendimento) {
-  const res = await fetch(API, {
-    method: 'POST',
-    body: JSON.stringify({ action: 'save', atendimento }),
-  });
-  const json = await res.json();
-  return json;
-}
-
-async function deletar(id) {
-  const res = await fetch(`${API}?action=delete&id=${id}`);
-  const json = await res.json();
-  return json;
+function save() {
+  localStorage.setItem('task_atendimentos', JSON.stringify(dados));
 }
 
 function toast(msg) {
@@ -639,30 +611,27 @@ function toggle(id) {
   render();
 }
 
-async function changeStatus(id, status) {
+function changeStatus(id, status) {
   dados = dados.map(a => a.id === id ? {...a, status} : a);
+  save();
   render();
-  const atendimento = dados.find(a => a.id === id);
-  await save(atendimento);
   toast('Status atualizado ✓');
 }
 
-async function saveNota(id) {
+function saveNota(id) {
   const val = document.getElementById(`nota-${id}`)?.value ?? '';
   dados = dados.map(a => a.id === id ? {...a, notas: val} : a);
-  const atendimento = dados.find(a => a.id === id);
-  await save(atendimento);
+  save();
   toast('Anotação salva ✓');
 }
 
-async function remover(id) {
+function remover(id) {
   if (!confirm('Remover este atendimento?')) return;
-  toast('Removendo...');
-  await deletar(id);
   dados = dados.filter(a => a.id !== id);
   if (expandido === id) expandido = null;
+  save();
   render();
-  toast('Atendimento removido ✓');
+  toast('Atendimento removido');
 }
 
 // MODAL
@@ -700,7 +669,7 @@ function overlayClick(e) {
   if (e.target === document.getElementById('overlay')) closeModal();
 }
 
-async function saveAtendimento() {
+function saveAtendimento() {
   const nome = document.getElementById('f-nome').value.trim();
   if (!nome) { alert('Informe o nome do aluno.'); return; }
 
@@ -712,26 +681,20 @@ async function saveAtendimento() {
     status: document.getElementById('f-status').value,
     prazo: document.getElementById('f-prazo').value,
     notas: document.getElementById('f-notas').value.trim(),
-    criadoEm: today(),
   };
 
   if (id) {
-    obj.id = Number(id);
     dados = dados.map(a => a.id === Number(id) ? {...a, ...obj} : a);
-    closeModal();
-    render();
-    toast('Salvando...');
-    await save(obj);
     toast('Atendimento atualizado ✓');
   } else {
-    closeModal();
-    toast('Salvando...');
-    const result = await save(obj);
-    obj.id = result.id;
-    dados.push(obj);
-    render();
+    const newId = dados.length ? Math.max(...dados.map(a=>a.id)) + 1 : 1;
+    dados.push({ ...obj, id: newId, criadoEm: today() });
     toast('Atendimento criado ✓');
   }
+
+  save();
+  closeModal();
+  render();
 }
 
 // keyboard
@@ -739,7 +702,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') closeModal();
 });
 
-carregarDados();
+render();
 </script>
 </body>
 </html>
