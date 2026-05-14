@@ -496,21 +496,29 @@ function toast(msg) {
   setTimeout(() => el.classList.remove('show'), 2200);
 }
 
+function cleanDate(d) {
+  if (!d) return '';
+  return String(d).split('T')[0].substring(0, 10);
+}
+
 function fmt(d) {
-  if (!d) return '—';
-  const [y,m,day] = d.split('-');
+  const clean = cleanDate(d);
+  if (!clean) return '—';
+  const [y,m,day] = clean.split('-');
   return `${day}/${m}/${y}`;
 }
 
 function today() { return new Date().toISOString().split('T')[0]; }
 
 function isOverdue(prazo, status) {
-  return prazo && status !== 'resolvido' && prazo < today();
+  const clean = cleanDate(prazo);
+  return clean && status !== 'resolvido' && clean < today();
 }
 
 function isUrgent(prazo, status) {
-  if (!prazo || status === 'resolvido') return false;
-  const diff = (new Date(prazo) - new Date(today())) / 86400000;
+  const clean = cleanDate(prazo);
+  if (!clean || status === 'resolvido') return false;
+  const diff = (new Date(clean) - new Date(today())) / 86400000;
   return diff >= 0 && diff <= 1;
 }
 
